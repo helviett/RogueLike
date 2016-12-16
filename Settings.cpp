@@ -3,11 +3,11 @@
 #include <fstream>
 #include <iostream>
 
-void Settings::GetSettngs(json config)
+void Settings::GetSettngs(json &config)
 {
 	std::ifstream fin("config.cfg");
-	fin >> Settings::Config();
-	std::cout << Settings::Config();
+	fin >> config;
+	std::cout << config;
 }
 
 json & Settings::Config()
