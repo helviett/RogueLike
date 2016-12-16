@@ -1,6 +1,7 @@
 #include "Item.h"
 
-
+const int HEALTH_POTION_FOREGROUND = Settings::Config()["Items"]["HealthPotion"]["Foreground"];;
+const int HEALTH_POTION_BACKGROUND = Settings::Config()["Items"]["HealthPotion"]["Background"];
 
 Item::Item()
 {
@@ -15,8 +16,8 @@ HealthPotion::HealthPotion(int x, int y)
 	this->x = x;
 	this->y = y;
 	this->tile = '+';
-	this->foreground = Settings::Config()["Items"]["HealthPotion"]["Foreground"];
-	this->background = Settings::Config()["Items"]["HealthPotion"]["Background"];
+	this->foreground = HEALTH_POTION_FOREGROUND;
+	this->background = HEALTH_POTION_BACKGROUND;
 }
 
 void HealthPotion::Collide(GameObject * go)

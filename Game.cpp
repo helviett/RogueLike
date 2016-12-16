@@ -12,7 +12,7 @@
 
 Game::Game()
 {
-	Settings::GetSettngs(Settings::Config());
+	//Settings::GetSettngs(Settings::Config());
 }
 
 void Game::LoadMap(string fileName)

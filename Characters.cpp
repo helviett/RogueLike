@@ -6,6 +6,24 @@
 #include <cstdlib>
 #include "Settings.h"
 
+const int KNIGHT_DAMAGE = Settings::Config()["Characters"]["Knight"]["Damage"];
+const int KNIGTH_HEALTH = Settings::Config()["Characters"]["Knight"]["Health"];
+const int KNIGHT_FOREGROUND = Settings::Config()["Characters"]["Knight"]["Foreground"];
+const int KNIGHT_BACKGROUND = Settings::Config()["Characters"]["Knight"]["Background"];
+
+const int ZOMBIE_DAMAGE = Settings::Config()["Characters"]["Zombie"]["Damage"];
+const int ZOMBIE_HEALTH = Settings::Config()["Characters"]["Zombie"]["Health"];
+const int ZOMBIE_FOREGROUND = Settings::Config()["Characters"]["Zombie"]["Foreground"];
+const int ZOMBIE_BACKGROUND = Settings::Config()["Characters"]["Zombie"]["Background"];
+
+const int DRAGON_DAMAGE = Settings::Config()["Characters"]["Dragon"]["Damage"];
+const int DRAGON_HEALTH = Settings::Config()["Characters"]["Dragon"]["Health"];
+const int DRAGON_FOREGROUND = Settings::Config()["Characters"]["Dragon"]["Foreground"];
+const int DRAGON_BACKGROUND = Settings::Config()["Characters"]["Dragon"]["Background"];
+
+const int PRINCESS_FOREGROUND = Settings::Config()["Characters"]["Princess"]["Foreground"];
+const int PRINCESS_BACKGROUND = Settings::Config()["Characters"]["Princess"]["Background"];
+
 void Character::TakeDamage(int dmg)
 {
 	this->health -= dmg;
@@ -136,13 +154,14 @@ Knight::Knight(int x, int y)
 {
 	this->x = x;
 	this->y = y;
-	damage = Settings::Config()["Characters"]["Knight"]["Damage"];
-	health = Settings::Config()["Characters"]["Knight"]["Health"];
+	damage = KNIGHT_DAMAGE;
+	health = KNIGTH_HEALTH;
+	this->foreground = KNIGHT_FOREGROUND;
+	this->background = KNIGHT_BACKGROUND;
 	this->state = Alive;
 	this->tile = 'K';
 	this->direction = std::make_pair<int, int>(1, 1);
-	this->foreground = Settings::Config()["Characters"]["Knight"]["Foreground"];
-	this->background = Settings::Config()["Characters"]["Knight"]["Background"];;
+	
 }
 
 void Zombie::Collide(GameObject * go)
@@ -339,14 +358,14 @@ Zombie::Zombie(int x, int y)
 {
 	this->x = x;
 	this->y = y;
-	damage = Settings::Config()["Characters"]["Zombie"]["Damage"];
-	health = Settings::Config()["Characters"]["Zombie"]["Health"];
+	damage = ZOMBIE_DAMAGE;
+	health = ZOMBIE_HEALTH;
+	this->foreground = ZOMBIE_FOREGROUND;
+	this->background = ZOMBIE_BACKGROUND;
 	this->state = Alive;
 	this->nx = 0;
 	this->ny = 0;
 	this->tile = 'Z';
-	this->foreground = Settings::Config()["Characters"]["Zombie"]["Foreground"];
-	this->background = Settings::Config()["Characters"]["Zombie"]["Background"];
 }
 
 void Dragon::Collide(GameObject * go)
@@ -513,14 +532,14 @@ Dragon::Dragon(int x, int y)
 {
 	this->x = x;
 	this->y = y;
-	damage = Settings::Config()["Characters"]["Dragon"]["Damage"];
-	health = Settings::Config()["Characters"]["Dragon"]["Health"];
+	damage = DRAGON_DAMAGE;
+	health = DRAGON_HEALTH;
+	this->foreground = DRAGON_FOREGROUND;
+	this->background = DRAGON_BACKGROUND;
 	this->state = Alive;
 	this->nx = 0;
 	this->ny = 0;
 	this->tile = 'D';
-	this->foreground = Settings::Config()["Characters"]["Dragon"]["Foreground"];
-	this->background = Settings::Config()["Characters"]["Dragon"]["Background"];
 }
 
 void Princess::Collide(GameObject * go)
@@ -577,6 +596,6 @@ Princess::Princess(int x, int y)
 	this->state = Alive;
 	this->tile = 'P';
 	this->safe = false;
-	this->foreground = Settings::Config()["Characters"]["Princess"]["Foreground"];
-	this->background = Settings::Config()["Characters"]["Princess"]["Background"];
+	this->foreground = PRINCESS_FOREGROUND;
+	this->background = PRINCESS_BACKGROUND;
 }

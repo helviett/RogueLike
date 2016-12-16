@@ -5,6 +5,12 @@
 #include "Item.h"
 
 
+const int FIREBALL_DAMAGE = Settings::Config()["Projectiles"]["Fireball"]["Damage"];
+const int FIREBALL_FOREGROUND = Settings::Config()["Projectiles"]["Fireball"]["Foreground"];
+const int FIREBALL_BACKGROUND = Settings::Config()["Projectiles"]["Fireball"]["Background"];
+
+const int ARROW_DAMAGE = Settings::Config()["Projectiles"]["Arrow"]["Damage"];
+
 Projectile::Projectile()
 {
 }
@@ -49,7 +55,7 @@ Arrow::Arrow(int x, int y, std::pair<int, int> direction)
 {
 	this->x = x;
 	this->y = y;
-	this->damage = Settings::Config()["Projectiles"]["Arrow"]["Damage"];
+	this->damage = ARROW_DAMAGE;
 	this->direction = direction;
 	if (this->direction.first == 1)
 		tile = '>';
@@ -180,10 +186,10 @@ Fireball::Fireball(int x, int y, std::pair<int, int> direction)
 {
 	this->x = x;
 	this->y = y;
-	this->damage = Settings::Config()["Projectiles"]["Fireball"]["Damage"];
+	this->damage = FIREBALL_DAMAGE;
+	this->foreground = FIREBALL_FOREGROUND;
+	this->background = FIREBALL_BACKGROUND;
 	this->direction = direction;
 	this->tile = '*';
 	this->state = Alive;
-	this->foreground = Settings::Config()["Projectiles"]["Fireball"]["Foreground"];
-	this->background = Settings::Config()["Projectiles"]["Fireball"]["Background"];
 }
