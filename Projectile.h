@@ -1,21 +1,19 @@
 #pragma once
-
 #include "GameObject.h"
 
-enum ObstacleAtribute
-{
-	oaInvis, oaDim, oaNormal
-};
-
-class Obstacle : public GameObject
+class Projectile : public GameObject
 {
 public:
-	Obstacle();
+	Projectile();
+	Projectile(int x, int y);
+	int Damage();
+
+	
 protected:
-	ObstacleAtribute atribute;
+	int damage, strength, speed;
 };
 
-class Floor : public Obstacle
+class Arrow : public Projectile
 {
 public:
 	void Collide(GameObject *go) override;
@@ -29,11 +27,12 @@ public:
 	void Collide(HealthPotion *hp) override;
 	void Collide(Princess *p) override;
 
-	Floor(int x, int y);
-	char Tile() override;
+	void Act(Map &map, std::vector<GameObject *> &dobj);
+	void SetPosition(int x, int y, Map &map);
+	Arrow(int x, int y, std::pair<int, int> direction);
 };
 
-class HardWall : public Obstacle
+class Fireball : public Projectile
 {
 public:
 	void Collide(GameObject *go) override;
@@ -47,6 +46,7 @@ public:
 	void Collide(HealthPotion *hp) override;
 	void Collide(Princess *p) override;
 
-	HardWall(int x, int y);
-	char Tile();
+	void Act(Map &map, std::vector<GameObject *> &dobj);
+	void SetPosition(int x, int y, Map &map);
+	Fireball(int x, int y, std::pair<int, int> direction);
 };

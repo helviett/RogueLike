@@ -1,168 +1,25 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "Game.h"
+#include "Obstacle.h"
 #include <fstream>
 #include <iostream>
 #include <conio.h>
+#include <fstream>
 #include "curses.h"
+#include "Settings.h"
 
-#define DEAD NULL
+
 
 Game::Game()
 {
-
+	Settings::GetSettngs(Settings::Config());
 }
 
 void Game::LoadMap(string fileName)
 {
-	ifstream fin(fileName);
-	if (fin.fail())
-	{
-		cout << "File doesn't exist" << endl;
-		exit(1);
-	}
-	string line;
-	while (getline(fin, line))
-	{
-		map.push_back(line);
-	}
-	CreateCharacters();
-	PrintMap();
-}
-
-vector<pair<int, int>> bfs(int x, int y, vector<string> &map, int n, int m)
-{
-	struct lvledV
-	{
-		pair<int, int> p;
-		int lvl;
-		lvledV(pair<int, int> p, int lvl)
-		{
-			this->p = p;
-			this->lvl = lvl;
-		}
-		lvledV()
-		{
-
-		}
-	};
-	queue<lvledV> q;
-	q.push(lvledV(make_pair(x, y), 0));
-	vector<pair<int, int>> p;
-	lvledV cur;
-	while (!q.empty())
-	{
-		cur = q.front();
-		q.pop();
-		if (map[cur.p.second][cur.p.first] != 'K')
-			p.push_back(cur.p);
-		if (cur.lvl >= n)
-			continue;
-		map[cur.p.second][cur.p.first] = '#';
-		if (ableToMove(cur.p.first + 1, cur.p.second, map))
-		{
-			q.push(lvledV(make_pair(cur.p.first + 1, cur.p.second), cur.lvl + 1));
-		}
-		if (ableToMove(cur.p.first - 1, cur.p.second, map))
-		{
-			q.push(lvledV(make_pair(cur.p.first - 1, cur.p.second), cur.lvl + 1));
-		}
-		if (ableToMove(cur.p.first, cur.p.second + 1, map))
-		{
-			q.push(lvledV(make_pair(cur.p.first, cur.p.second + 1), cur.lvl + 1));
-		}
-		if (ableToMove(cur.p.first, cur.p.second - 1, map))
-		{
-			q.push(lvledV(make_pair(cur.p.first, cur.p.second - 1), cur.lvl + 1));
-		}
-	}
-	return p;
-}
-
-void Game::PrintMap()
-{
-	clear();
-	int x, y;
-	player->GetPosition(x, y);
-	/*for (int i = 0; i < map.size(); i++)
-	{
-		for (int j = 0; j < map[i].size(); j++)
-		{
-			if (y - i < -2 || y - i > 2)
-				addch(map[i][j] | A_INVIS);
-			else if (x - j < -6 || x - j > 6)
-
-				addch(map[i][j] | A_INVIS);
-			else
-			{
-				addch(map[i][j]);
-			}
-		}
-		addch('\n');
-	}*/
-	for (int i = 0; i < map.size(); i++)
-	{
-		addstr(map[i].c_str());
-		addch('\n');
-		//printf("%s\n", map[i].c_str());a
-		//cout << map[i] << endl;
-	}
-}
-
-void Game::CreateCharacters()
-{
-	Monster *m;
-	for (int i = 0; i < map.size(); i++)
-	{
-		for (int j = 0; j < map[i].size(); j++)
-		{
-			switch (map[i][j])
-			{
-			case 'K':
-				player = new Knight(j, i);// shared_ptr<Knight> = (new Knight) Knight(&&Knight
-				break;
-			case 'Z':
-				m = new Zombie(j, i);
-				monsters.push_back(m);
-				break;
-			default:
-				break;
-			}
-		}
-	}
-}
-
-void Game::UpdateGame()
-{
-	int pfx, pfy, px, py; bool mfreeToMove = true;
-	player->GetFurtherPosition(pfx, pfy);
-	player->GetPosition(px, py);
-	for (int i = 0; i < monsters.size(); i++)
-	{
-		if (monsters[i] == DEAD)
-			continue;
-		int mfx, mfy, my, mx;
-		monsters[i]->GetFurtherPosition(mfx, mfy);
-		monsters[i]->GetPosition(mx, my);
-		if ((mfx == px && mfy == py) || (mx == pfx && my == pfy) || (mfx == pfx && mfy == pfy))
-		{
-			mfreeToMove = false;
-			monsters[i]->Collide(player);
-			if (monsters[i]->State() == Dead)
-			{
-				
-				map[my][mx] = '.';
-				delete monsters[i];
-				monsters[i] = DEAD;
-				
-			}
-			if (player->State() == Dead)
-			{
-				exit(0);
-			}
-		}
-		if (mfreeToMove)
-			monsters[i]->SetPosition(mfx, mfy, map);
-	}
-	player->SetPosition(pfx, pfy, map);
+	std::vector<GameObject *> res =  map.LoadFromFile(fileName, dynamicObjects);
+	player = (Knight *)res[0];
+	princess = (Princess *)res[1];
 }
 
 
@@ -172,39 +29,86 @@ void Game::RunGame()
 
 	while (!quit)
 	{
+		
 		char key;
-		PrintMap();
-		int px, py;
-		player->GetPosition(px, py);
-		printw("Current HP: %d\n", player->Health());
+		clear();
+		map.Print();
+		printw("Health: %d", player->Health());
 		refresh();
+		int x, y;
+		player->GetPosition(x, y);
 		nokey:
 		key = _getch();
+		GameObject *go;
 		switch (key)
 		{
 		case 's':
-			player->Move(px, py + 1);
+			player->SetPosition(x, y + 1, map);
 			break;
 		case 'w':
-			player->Move(px, py - 1);
+			player->SetPosition(x, y - 1, map);
 			break;
 		case 'a':
-			player->Move(px - 1, py);
+			player->SetPosition(x - 1, y, map);
 			break;
 		case 'd':
-			player->Move(px + 1, py);
+			player->SetPosition(x + 1, y, map);
 			break;
 		case 'f':
+			go = player->Shoot(map);
+			if (go)
+				dynamicObjects.push_back(go);
+			break;
+		case 'v':
 			break;
 		default:
 			goto nokey;
 			break;
 		}
-		for (int i = 0; i < monsters.size(); i++)
+		player->GetPosition(x, y);
+		for (int i = 0; i < dynamicObjects.size(); i++)
 		{
-			if (monsters[i] != DEAD)
-				monsters[i]->Act(map);
+			if (dynamicObjects[i])
+			{
+				if (dynamicObjects[i]->state == Alive)
+					dynamicObjects[i]->Act(map, dynamicObjects);
+				if (dynamicObjects[i]->state == Dead)
+				{
+					int x, y;
+					dynamicObjects[i]->GetPosition(x, y);
+					if (map.objects[y][x] != player)
+					{
+						GameObject *go = new Floor(x, y);
+						map.objects[y][x] = go;
+					}
+					delete dynamicObjects[i];
+					dynamicObjects[i] = NULL;
+					continue;
+				}
+				
+			}
+				
 		}
-		UpdateGame();
+		if (princess->safe)
+		{
+			clear();
+			quit = true;
+			mvprintw(10, 10, "You won!\n");
+			//refresh();
+		}
+		if (player->state == Dead)
+		{
+			clear();
+			quit = true;
+			mvprintw(10, 10, "You lost!\n");
+			//refresh();
+		}
+		
 	}
+}
+
+void Game::Clear()
+{
+	map.objects.clear();
+	dynamicObjects.clear();
 }

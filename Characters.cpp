@@ -1,12 +1,10 @@
 #include "Characters.h"
+#include "Obstacle.h"
+#include "Projectile.h"
+#include "Item.h"
 #include <iostream>
 #include <cstdlib>
-
-void Character::GetFurtherPosition(int & nx, int & ny)
-{
-	nx = this->nx;
-	ny = this->ny;
-}
+#include "Settings.h"
 
 void Character::TakeDamage(int dmg)
 {
@@ -24,30 +22,33 @@ int Character::Damage()
 	return this->damage;
 }
 
-CharState Character::State()
+ObjState Character::State()
 {
 	return this->state;
 }
 
-void Knight::SetPosition(int x, int y, std::vector<std::string> &map)
+void Knight::SetPosition(int x, int y, Map &map)
 {
-	if (x < 0 || y < 0)
-		exit(1);
-	switch (map[y][x])
+	this->direction.first =  x - this->x;
+	this->direction.second = y - this->y;
+	switch (map.objects[y][x]->Tile())
 	{
 	case '.':
-		map[this->y][this->x] = '.';
-		map[y][x] = 'K';
-		this->y = y;
+		map.objects[y][x]->SetPosition(this->x, this->y, map);
+		map.objects[this->y][this->x] = map.objects[y][x];
+		map.objects[y][x] = this;
 		this->x = x;
+		this->y = y;
+		break;
+	case '+':
+		map.objects[y][x]->Collide(this);
+		map.objects[y][x] = new Floor(x, y);
+		SetPosition(x, y, map);
 		break;
 	case '#':
 		break;
-	case 'P':
-		exit(0);
-		break;
 	default:
-		
+		map.objects[y][x]->Collide(this);
 		break;
 	}
 }
@@ -58,16 +59,46 @@ void Knight::GetPosition(int &x, int &y)
 	y = this->y;
 }
 
-void Knight::Collide(Character *ch)
-{
-	ch->Collide(this);
-}
-
 void Knight::Collide(Zombie *z)
 {
 	this->health -= z->Damage();
 	state = health <= 0 ? Dead : Alive;
-	z->TakeDamage(this->damage);
+}
+
+void Knight::Collide(Floor * f)
+{
+}
+
+void Knight::Collide(HardWall * hw)
+{
+}
+
+void Knight::Collide(Dragon * d)
+{
+	this->health -= d->Damage();
+	state = health <= 0 ? Dead : Alive;
+}
+
+void Knight::Collide(Arrow * a)
+{
+}
+
+void Knight::Collide(Fireball * fb)
+{
+	this->health -= fb->Damage();
+	state = health <= 0 ? Dead : Alive;
+	fb->state = Dead;
+}
+
+void Knight::Collide(HealthPotion * hp)
+{
+	this->health += 100;
+	hp->state = Dead;
+}
+
+void Knight::Collide(Princess * p)
+{
+	p->safe = true;
 }
 
 void Knight::Collide(Knight * k)
@@ -79,10 +110,21 @@ void Knight::Collide(GameObject * go)
 	go->Collide(this);
 }
 
-void Knight::Move(int x, int y)
+GameObject * Knight::Shoot(Map &map)
 {
-	this->nx = x;
-	this->ny = y;
+	int x, y;
+	x = this->x + this->direction.first;
+	y = this->y + this->direction.second;
+	if (x < 0 || y < 0)
+		return NULL;
+	if (map.objects[y][x]->Tile() == '.')
+	{
+		delete map.objects[y][x];
+		map.objects[y][x] = new Arrow(x, y, this->direction);
+		return map.objects[y][x];
+	}
+	return NULL;
+	
 }
 
 char Knight::Tile()
@@ -94,10 +136,13 @@ Knight::Knight(int x, int y)
 {
 	this->x = x;
 	this->y = y;
-	damage = 10;
-	health = 100;
+	damage = Settings::Config()["Characters"]["Knight"]["Damage"];
+	health = Settings::Config()["Characters"]["Knight"]["Health"];
 	this->state = Alive;
 	this->tile = 'K';
+	this->direction = std::make_pair<int, int>(1, 1);
+	this->foreground = Settings::Config()["Characters"]["Knight"]["Foreground"];
+	this->background = Settings::Config()["Characters"]["Knight"]["Background"];;
 }
 
 void Zombie::Collide(GameObject * go)
@@ -105,12 +150,41 @@ void Zombie::Collide(GameObject * go)
 	go->Collide(this);
 }
 
-void Zombie::Collide(Character * ch)
+void Zombie::Collide(Zombie * z)
 {
-	ch->Collide(this);
 }
 
-void Zombie::Collide(Zombie * z)
+void Zombie::Collide(Floor * f)
+{
+}
+
+void Zombie::Collide(HardWall * hw)
+{
+}
+
+void Zombie::Collide(Dragon * d)
+{
+}
+
+void Zombie::Collide(Arrow * a)
+{
+	this->health -= a->Damage();
+	state = health <= 0 ? Dead : Alive;
+	a->state = Dead;
+}
+
+void Zombie::Collide(Fireball * fb)
+{
+	this->health -= fb->Damage();
+	state = health <= 0 ? Dead : Alive;
+	fb->state = Dead;
+}
+
+void Zombie::Collide(HealthPotion * hp)
+{
+}
+
+void Zombie::Collide(Princess * p)
 {
 }
 
@@ -118,47 +192,28 @@ void Zombie::Collide(Knight * k)
 {
 	this->health -= k->Damage();
 	state = health <= 0 ? Dead : Alive;
-	k->TakeDamage(damage);
 
 }
 
-void Zombie::Move(int x, int y)
+bool isArrow(char tile)
 {
-	this->nx = x;
-	this->ny = y;
+	return tile == 'V' || tile == '^' || tile == '<' || tile == '>';
 }
+
 bool ableToMove(int x, int y, std::vector<std::string> &map)
 {
 	if (y >= map.size() || x >= map[y].size())
 		return false;
-	if (map[y][x] == '.' || map[y][x] == 'K')
+	if (map[y][x] == '.' || map[y][x] == 'K' || map[y][x] == '*' || isArrow(map[y][x]))
 		return true;
 	return false;
 }
 
-bool dfs(int x, int y, std::vector<std::string> &map, int n, int m)
-{
-	bool up, down, right, left;
-	if (map[x][y] == 'K')
-		return true;
-	if (n == m)
-		return false;
-	if (ableToMove(x + 1, y, map))
-		 right = dfs(x + 1, y, map, n + 1, m);
-	if (ableToMove(x - 1, y, map))
-		left = dfs(x - 1, y, map, n + 1, m);
-	if (ableToMove(x, y + 1, map))
-		down =  dfs(x, y + 1, map, n + 1, m);
-	if (ableToMove(x, y - 1, map))
-		up = dfs(x, y - 1, map, n + 1, m);
-	return right || left || down || up;
-}
-
-pair<int,int> bfs(int x, int y, vector<string> &map, int n, int m)
+std::pair<int,int> bfs(int x, int y, std::vector<std::string> &map, int n, int m)
 {
 	struct lvledV
 	{
-		pair<int, int> p;
+		std::pair<int, int> p;
 		int lvl;
 		lvledV(std::pair<int, int> p, int lvl)
 		{
@@ -178,7 +233,7 @@ pair<int,int> bfs(int x, int y, vector<string> &map, int n, int m)
 		std::vector<std::pair<int, int>> v(map[i].size());
 		p.push_back(v);
 	}
-	p[y][x] = make_pair(-1, -1);
+	p[y][x] = std::make_pair(-1, -1);
 	lvledV cur;
 	while (!q.empty())
 	{
@@ -222,47 +277,55 @@ pair<int,int> bfs(int x, int y, vector<string> &map, int n, int m)
 	return p[y][x];
 }
 
-void Zombie::Act(vector<string> &map)
+void Zombie::Act(Map &map, std::vector<GameObject *> &dobj)
 {
-	std::vector<string> copy(map);
-	pair<int, int> res = bfs(this->x, this->y, copy, 5, 0);
+	std::pair<int, int> res = bfs(this->x, this->y, map.StrMap(), 5, 0);
 	if (res.first != -1 && res.second != -1)
-		Move(res.first, res.second);
+		this->SetPosition(res.first, res.second, map);
 	else
 	{
-		int direction = rand() % 4 + 1;
+		int direction = rand() % 5 + 1;
 		switch (direction)
 		{
 		case 1:
-			Move(x + 1, y);
+			SetPosition(x - 1, y, map);
 			break;
 		case 2:
-			Move(x - 1, y);
+			SetPosition(x + 1, y, map);
 			break;
 		case 3:
-			Move(x, y + 1);
+			SetPosition(x, y + 1, map);
 			break;
 		case 4:
-			Move(x, y - 1);
+			SetPosition(x, y - 1, map);
+			break;
+		default:
 			break;
 		}
 	}
-	
 }
 
-void Zombie::SetPosition(int x, int y, std::vector<std::string>& map)
+void Zombie::SetPosition(int x, int y, Map &map)
 {
-	if (x < 0 || y < 0)
-		exit(1);
-	switch (map[y][x])
+	this->direction.first = x - this->x;
+	this->direction.second = y - this->y;
+	switch (map.objects[y][x]->Tile())
 	{
 	case '.':
-		map[this->y][this->x] = '.';
-		map[y][x] = 'Z';
-		this->y = y;
+		map.objects[y][x]->SetPosition(this->x, this->y, map);
+		map.objects[this->y][this->x] = map.objects[y][x];
+		map.objects[y][x] = this;
 		this->x = x;
+		this->y = y;
+		break;
+	case '#':
 		break;
 	default:
+		map.objects[y][x]->Collide(this);
+		if (this->state == Dead)
+		{
+			map.objects[this->y][this->x] = new Floor(this->x, this->y);
+		}
 		break;
 	}
 }
@@ -276,10 +339,244 @@ Zombie::Zombie(int x, int y)
 {
 	this->x = x;
 	this->y = y;
-	damage = 10;
-	health = 20;
+	damage = Settings::Config()["Characters"]["Zombie"]["Damage"];
+	health = Settings::Config()["Characters"]["Zombie"]["Health"];
 	this->state = Alive;
 	this->nx = 0;
 	this->ny = 0;
 	this->tile = 'Z';
+	this->foreground = Settings::Config()["Characters"]["Zombie"]["Foreground"];
+	this->background = Settings::Config()["Characters"]["Zombie"]["Background"];
+}
+
+void Dragon::Collide(GameObject * go)
+{
+	go->Collide(this);
+}
+
+void Dragon::Collide(Knight * k)
+{
+	this->health -= k->Damage();
+	state = health <= 0 ? Dead : Alive;
+}
+
+void Dragon::Collide(Zombie * z)
+{
+}
+
+void Dragon::Collide(Floor * f)
+{
+}
+
+void Dragon::Collide(HardWall * hw)
+{
+}
+
+void Dragon::Collide(Dragon * d)
+{
+}
+
+void Dragon::Collide(Arrow * a)
+{
+	this->health -= a->Damage();
+	state = health <= 0 ? Dead : Alive;
+	a->state = Dead;
+}
+
+void Dragon::Collide(Fireball * fb)
+{
+	
+}
+
+void Dragon::Collide(HealthPotion * hp)
+{
+}
+
+void Dragon::Collide(Princess * p)
+{
+}
+
+GameObject * Dragon::Fire(Map & map)
+{
+	int x, y;
+	x = this->x + this->direction.first;
+	y = this->y + this->direction.second;
+	if (x < 0 || y < 0)
+		return NULL;
+	if (map.objects[y][x]->Tile() == '.')
+	{
+		delete map.objects[y][x];
+		map.objects[y][x] = new Fireball(x, y, this->direction);
+		return map.objects[y][x];
+	}
+	return NULL;
+}
+
+void Dragon::Act(Map & map, std::vector<GameObject *> &dobj)
+{
+
+	std::pair<int, int> res = bfs(this->x, this->y, map.StrMap(), 8, 0);
+	if (res.first != -1 && res.second != -1)
+	{
+		this->direction.first = res.first - this->x;
+		this->direction.second = res.second - this->y;
+		if (this->direction.first != 0)
+		{
+			for (int i = 2; i <= 6; i++)
+			{
+				int shift = this->x + this->direction.first * i;
+				if (shift > map.objects[y].size() || shift < 0)
+					break;
+				if (map.objects[this->y][shift]->Tile() == '#')
+					break;
+				if (map.objects[this->y][shift]->Tile() == 'K')
+				{
+					GameObject *go = this->Fire(map);
+					if (go)
+						dobj.push_back(go);
+					return;
+				}
+					
+			}
+		}
+		else
+		{
+			for (int i = 2; i < 6; i++)
+			{
+				int shift = this->y + this->direction.second * i;
+				if (shift > map.objects.size() || shift < 0)
+					break;
+				if (map.objects[this->y + this->direction.second * i][this->x]->Tile() == '#')
+					break;
+				if (map.objects[this->y + this->direction.second * i][this->x]->Tile() == 'K')
+				{
+					GameObject *go = this->Fire(map);
+					if (go)
+						dobj.push_back(go);
+					return;
+				}
+
+			}
+		}
+		this->SetPosition(res.first, res.second, map);
+	}
+	else
+	{
+		int direction = rand() % 5 + 1;
+		switch (direction)
+		{
+		case 1:
+			SetPosition(x - 1, y, map);
+			break;
+		case 2:
+			SetPosition(x + 1, y, map);
+			break;
+		case 3:
+			SetPosition(x, y + 1, map);
+			break;
+		case 4:
+			SetPosition(x, y - 1, map);
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+void Dragon::SetPosition(int x, int y, Map & map)
+{
+	this->direction.first = x - this->x;
+	this->direction.second = y - this->y;
+	switch (map.objects[y][x]->Tile())
+	{
+	case '.':
+		map.objects[y][x]->SetPosition(this->x, this->y, map);
+		map.objects[this->y][this->x] = map.objects[y][x];
+		map.objects[y][x] = this;
+		this->x = x;
+		this->y = y;
+		break;
+	case '#':
+		break;
+	default:
+		map.objects[y][x]->Collide(this);
+		break;
+	}
+}
+
+char Dragon::Tile()
+{
+	return tile;
+}
+
+Dragon::Dragon(int x, int y)
+{
+	this->x = x;
+	this->y = y;
+	damage = Settings::Config()["Characters"]["Dragon"]["Damage"];
+	health = Settings::Config()["Characters"]["Dragon"]["Health"];
+	this->state = Alive;
+	this->nx = 0;
+	this->ny = 0;
+	this->tile = 'D';
+	this->foreground = Settings::Config()["Characters"]["Dragon"]["Foreground"];
+	this->background = Settings::Config()["Characters"]["Dragon"]["Background"];
+}
+
+void Princess::Collide(GameObject * go)
+{
+	go->Collide(this);
+}
+
+void Princess::Collide(Knight * k)
+{
+	safe = true;
+}
+
+void Princess::Collide(Zombie * z)
+{
+}
+
+void Princess::Collide(Floor * f)
+{
+}
+
+void Princess::Collide(HardWall * hw)
+{
+}
+
+void Princess::Collide(Dragon * d)
+{
+}
+
+void Princess::Collide(Arrow * a)
+{
+}
+
+void Princess::Collide(Fireball * fb)
+{
+}
+
+void Princess::Collide(HealthPotion * hp)
+{
+}
+
+void Princess::Collide(Princess * p)
+{
+}
+
+char Princess::Tile()
+{
+	return tile;
+}
+
+Princess::Princess(int x, int y)
+{
+	this->x = x;
+	this->y = y;
+	this->state = Alive;
+	this->tile = 'P';
+	this->safe = false;
+	this->foreground = Settings::Config()["Characters"]["Princess"]["Foreground"];
+	this->background = Settings::Config()["Characters"]["Princess"]["Background"];
 }

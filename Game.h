@@ -7,19 +7,19 @@
 
 using namespace std;
 
+class Map;
+
 class Game
 {
 public:
 	Game();
 	void LoadMap(string fileName);
-	void PrintMap();
 	void RunGame();
+	void Clear();
 private:
-	void CreateCharacters();
-	void UpdateGame();
-	vector<string> map;
+	Map map;
 	Knight *player;
-	vector<Monster *> monsters;
-	//shared_ptr<Knight> player;
+	Princess *princess;
+	vector<GameObject *> dynamicObjects;
 };
 
